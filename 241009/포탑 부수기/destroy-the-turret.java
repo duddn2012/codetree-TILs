@@ -25,6 +25,8 @@ public class Main {
     static boolean isLiveTowerOnly;
 
     static Cell[][] board;
+    static Point[][] parent;
+
     static PriorityQueue<Cell> attackPq = new PriorityQueue<>((o1, o2) -> {
         if(o1.isBroken && !o2.isBroken) return 1;
         else if (!o1.isBroken && o2.isBroken) return -1;
@@ -39,7 +41,7 @@ public class Main {
                     return -1;
                 } else if (o1.row + o1.col == o2.row + o2.col) {
                     // 열값이 가장 큰 포탑
-                    return Integer.compare(o1.col, o2.col);
+                    return Integer.compare(o2.col, o1.col);
                 } else {
                     return 1;
                 }
@@ -64,7 +66,7 @@ public class Main {
                 if(o1.row + o1.col < o2.row + o2.col){
                     return -1;
                 }else if(o1.row + o1.col == o2.row+o2.col){
-                    // 열값이 가장 큰 포탑
+                    // 열값이 가장 작은 포탑
                     return Integer.compare(o1.col, o2.col);
                 }else{
                     return 1;
@@ -118,7 +120,9 @@ public class Main {
             if(isLiveTowerOnly) break;
             visited = new int[rowSize+1][colSize+1];
             associatedAttack = new boolean[rowSize+1][colSize+1];
+            parent = new Point[rowSize+1][colSize+1];
             solve(turn);
+
         }
 
         result =defencePq.peek().atk;
@@ -204,6 +208,7 @@ public class Main {
                 if(dRow == attacker.row && dCol == attacker.col) continue;
 
                 visited[dRow][dCol] = cur.depth+1;
+                parent[dRow][dCol] = cur;
 
                 if(defencer.row == dRow && defencer.col == dCol){
                     isEnd = true;
@@ -224,7 +229,8 @@ public class Main {
 
     static void findHistory(Cell attacker, Cell defencer) {
         Queue<Point> queue = new LinkedList<>();
-        queue.add(new Point(defencer.row, defencer.col, visited[defencer.row][defencer.col]));
+        queue.add(parent[defencer.row][defencer.col]);
+
         associatedAttack[defencer.row][defencer.col]  = true;
         associatedAttack[attacker.row][attacker.col]  = true;
 
@@ -240,36 +246,21 @@ public class Main {
 
         while(!queue.isEmpty()){
             Point cur = queue.poll();
-            if(cur.depth == 2) break;
+            if(cur.row == attacker.row && cur.col == attacker.col) break;
             if(isLiveTowerOnly) break;
 
-            for(int delta=3; delta>=0; delta--){
-                int dRow = cur.row + DELTA_ROW[delta];
-                int dCol = cur.col + DELTA_COL[delta];
-
-                if(dRow < 1) dRow = rowSize;
-                if(dRow > rowSize) dRow = 1;
-                if(dCol < 1) dCol = colSize;
-                if(dCol > colSize) dCol = 1;
-
-                if(board[dRow][dCol].isBroken) continue;
-
-                if(visited[dRow][dCol] != cur.depth-1) continue;
-
-                Cell dCell = board[dRow][dCol];
-                dCell.atk -= attacker.atk /2;
-                if(dCell.atk <= 0) {
-                    dCell.isBroken = true;
-                    liveTowerCount--;
-                    if(liveTowerCount == 1) isLiveTowerOnly = true;
-                }
-
-                controlPq(dCell);
-
-                associatedAttack[dRow][dCol]  = true;
-                queue.add(new Point(dRow, dCol, cur.depth-1));
-                break;  // 한번 찾으면 그것이 최단 경로이므로 종료
+            Cell dCell = board[cur.row][cur.col];
+            dCell.atk -= attacker.atk /2;
+            if(dCell.atk <= 0) {
+                dCell.isBroken = true;
+                liveTowerCount--;
+                if(liveTowerCount == 1) isLiveTowerOnly = true;
             }
+
+            controlPq(dCell);
+
+            associatedAttack[cur.row][cur.col]  = true;
+            queue.add(parent[cur.row][cur.col]);
         }
     }
 
