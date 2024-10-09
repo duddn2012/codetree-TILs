@@ -147,9 +147,10 @@ public class Main {
         Cell attacker = selectAttacker();
         attacker.atk += rowSize + colSize;
         attacker.recentAtk = turn;
-        controlPq(attacker);
 
         Cell defencer = selectDefencer();
+
+        controlPq(attacker);
 
         // Process Attack
         if(!attackRaser(attacker, defencer)){
