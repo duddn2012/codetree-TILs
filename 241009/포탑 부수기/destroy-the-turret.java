@@ -9,7 +9,7 @@ import java.util.StringTokenizer;
 /**
  * 포탑 부수기
  *
- *
+ * 부서지지않은 포탑이 1개인 경우 종료
  */
 public class Main {
 
@@ -20,6 +20,9 @@ public class Main {
     static int rowSize;
     static int colSize;
     static int turnCount;
+    static int liveTowerCount;
+
+    static boolean isLiveTowerOnly;
 
     static Cell[][] board;
     static PriorityQueue<Cell> attackPq = new PriorityQueue<>((o1, o2) -> {
@@ -90,6 +93,8 @@ public class Main {
         turnCount = Integer.parseInt(st.nextToken());
 
         board = new Cell[rowSize+1][colSize+1];
+        liveTowerCount = rowSize * colSize;
+        isLiveTowerOnly = false;
 
         for (int row=1; row<=rowSize; row++){
             st = new StringTokenizer(br.readLine().trim(), " ");
@@ -99,6 +104,8 @@ public class Main {
 
                 if(atk <= 0){
                     cell.isBroken = true;
+                    liveTowerCount--;
+                    if(liveTowerCount == 1) isLiveTowerOnly = true;
                 }
 
                 board[row][col] = cell;
@@ -108,6 +115,7 @@ public class Main {
         }
 
         for(int turn=1; turn<=turnCount; turn++){
+            if(isLiveTowerOnly) break;
             visited = new int[rowSize+1][colSize+1];
             associatedAttack = new boolean[rowSize+1][colSize+1];
             solve(turn);
@@ -139,6 +147,7 @@ public class Main {
         Cell attacker = selectAttacker();
         attacker.atk += rowSize + colSize;
         attacker.recentAtk = turn;
+        controlPq(attacker);
 
         Cell defencer = selectDefencer();
 
@@ -146,6 +155,8 @@ public class Main {
         if(!attackRaser(attacker, defencer)){
             attackBomb(attacker, defencer);
         }
+
+        if(isLiveTowerOnly) return;
 
         // 포탑 정비
         restoreTower();
@@ -160,11 +171,7 @@ public class Main {
                 if(associatedAttack[row][col]) continue;
 
                 cur.atk += 1;
-                attackPq.remove(cur);
-                attackPq.add(cur);
-
-                defencePq.remove(cur);
-                defencePq.add(cur);
+                controlPq(cur);
             }
         }
     }
@@ -223,16 +230,17 @@ public class Main {
         Cell defenceCell = board[defencer.row][defencer.col];
 
         defenceCell.atk -= attacker.atk;
-        if(defenceCell.atk <= 0) defenceCell.isBroken = true;
-        attackPq.remove(defenceCell);
-        attackPq.add(defenceCell);
-
-        defencePq.remove(defenceCell);
-        defencePq.add(defenceCell);
+        if(defenceCell.atk <= 0) {
+            defenceCell.isBroken = true;
+            liveTowerCount--;
+            if(liveTowerCount == 1) isLiveTowerOnly = true;
+        }
+        controlPq(defenceCell);
 
         while(!queue.isEmpty()){
             Point cur = queue.poll();
             if(cur.depth == 2) break;
+            if(isLiveTowerOnly) break;
 
             for(int delta=3; delta>=0; delta--){
                 int dRow = cur.row + DELTA_ROW[delta];
@@ -249,13 +257,13 @@ public class Main {
 
                 Cell dCell = board[dRow][dCol];
                 dCell.atk -= attacker.atk /2;
-                if(dCell.atk <= 0) dCell.isBroken = true;
+                if(dCell.atk <= 0) {
+                    dCell.isBroken = true;
+                    liveTowerCount--;
+                    if(liveTowerCount == 1) isLiveTowerOnly = true;
+                }
 
-                attackPq.remove(dCell);
-                attackPq.add(dCell);
-
-                defencePq.remove(dCell);
-                defencePq.add(dCell);
+                controlPq(dCell);
 
                 associatedAttack[dRow][dCol]  = true;
                 queue.add(new Point(dRow, dCol, cur.depth-1));
@@ -272,15 +280,16 @@ public class Main {
         associatedAttack[attacker.row][attacker.col]  = true;
 
         defencer.atk -= attacker.atk;
-        if(defencer.atk <= 0) defencer.isBroken = true;
-        attackPq.remove(defencer);
-        attackPq.add(defencer);
-
-        defencePq.remove(defencer);
-        defencePq.add(defencer);
-
+        if(defencer.atk <= 0) {
+            defencer.isBroken = true;
+            liveTowerCount--;
+            if(liveTowerCount == 1) isLiveTowerOnly = true;
+        }
+        controlPq(defencer);
 
         for(int delta=0; delta<8; delta++){
+            if(isLiveTowerOnly) return;
+
             int dRow = row + DELTA_ROW[delta];
             int dCol = col + DELTA_COL[delta];
 
@@ -293,13 +302,12 @@ public class Main {
 
             Cell dCell = board[dRow][dCol];
             dCell.atk -= attacker.atk /2;
-            if(dCell.atk <= 0) dCell.isBroken = true;
-
-            attackPq.remove(dCell);
-            attackPq.add(dCell);
-
-            defencePq.remove(dCell);
-            defencePq.add(dCell);
+            if(dCell.atk <= 0) {
+                dCell.isBroken = true;
+                liveTowerCount--;
+                if(liveTowerCount == 1) isLiveTowerOnly = true;
+            }
+            controlPq(dCell);
 
             associatedAttack[dRow][dCol]  = true;
         }
@@ -311,6 +319,14 @@ public class Main {
 
     static Cell selectAttacker() {
         return attackPq.peek();
+    }
+
+    static void controlPq(Cell cell){
+        attackPq.remove(cell);
+        attackPq.add(cell);
+
+        defencePq.remove(cell);
+        defencePq.add(cell);
     }
 
     static class Cell implements Comparable{
