@@ -258,7 +258,7 @@ public class Main {
             warriorMoveCount = warriorMove();
 
             // 전사의 공격
-            warriorAttackCount = warriorAttack();
+            warriorAttackCount += warriorAttack();
 
             sb.append(warriorMoveCount + " " + stoneCount + " " + warriorAttackCount + "\n");
         }
@@ -436,7 +436,7 @@ public class Main {
                 lookBoard[curRow][curCol] = setValue;
 
                 // 전사를 만났을 경우 stone 처리
-                if(meetWarrior(curRow, curCol)) {
+                if(type == 0 && meetWarrior(curRow, curCol)) {
                     straightStoneCount += warriorCountArr[curRow][curCol];
                     lookBoard[curRow][curCol] = 3;
                     makeSafeArea(straightDirectionIndex, straightDirectionIndex, curRow, curCol);
